@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import mapboxgl from "mapbox-gl";
 import axios from "axios";
 import { motion } from "framer-motion";
+import CountryDashboard from "./CountryDashboard/CountryDashboard";
 import "./RoampediaMap.css";
 
 mapboxgl.accessToken = "pk.eyJ1Ijoic3JpamFuYW5pMjA3MyIsImEiOiJjbWg4emNwcWQxNHdsMmlzNWU1OHgxa2xkIn0.2M6rf1vKlgeWShhOhqI-OQ";
@@ -49,7 +50,6 @@ export default function RoampediaMap({ userId = "user_123" }) {
           url: "mapbox://mapbox.country-boundaries-v1",
         });
 
-        // Default country layer (light grey)
         mapRef.current.addLayer({
           id: "country-borders",
           type: "fill",
@@ -61,7 +61,6 @@ export default function RoampediaMap({ userId = "user_123" }) {
           },
         });
 
-        // Highlight visited countries
         mapRef.current.addLayer({
           id: "visited-countries",
           type: "fill",
@@ -74,7 +73,6 @@ export default function RoampediaMap({ userId = "user_123" }) {
           filter: ["in", "iso_3166_1_alpha_3", ...visited],
         });
 
-        // Borders
         mapRef.current.addLayer({
           id: "country-outline",
           type: "line",
@@ -103,26 +101,39 @@ export default function RoampediaMap({ userId = "user_123" }) {
           setHoverInfo(null);
         });
 
-        // Click event to open info drawer
+        // ✅ Click event to open CountryDashboard
         mapRef.current.on("click", "country-borders", async (e) => {
           const f = e.features[0];
           const code = f.properties.iso_3166_1_alpha_3;
           try {
             const resp = await axios.get(`/api/country/${code}`);
             setSelectedCountry({
-              code,
-              ...resp.data,
+                code,
+                name: f.properties.name_en,
+                region: f.properties.region || "",
+                basic: {
+                cca3: code,
+                name: f.properties.name_en,
+                },
             });
-            console.log("Country API response:", resp.data);
-
           } catch (err) {
             console.warn("Country fetch failed:", err);
+            // fallback if API fails
+            setSelectedCountry({
+              basic: {
+                cca3: code,
+                name: f.properties.name_en,
+                capital: "Unknown",
+                region: "N/A",
+                population: 0,
+                flag: "",
+              },
+            });
           }
         });
       });
     }
 
-    // Update visited countries on map
     if (mapRef.current?.getLayer("visited-countries")) {
       mapRef.current.setFilter("visited-countries", [
         "in",
@@ -185,47 +196,15 @@ export default function RoampediaMap({ userId = "user_123" }) {
         </motion.div>
       )}
 
-      {/* Country Info Drawer */}
+      {/* ✅ New Country Dashboard Panel */}
       {selectedCountry && (
-        <motion.div
-          className="drawer"
-          initial={{ x: 400 }}
-          animate={{ x: 0 }}
-          exit={{ x: 400 }}
-        >
-          <div className="drawer-header">
-            <h2>{selectedCountry.basic.name}</h2>
-            <button
-              className="close-btn"
-              onClick={() => setSelectedCountry(null)}
-            >
-              ✕
-            </button>
-          </div>
-          <div className="drawer-body">
-            <img
-              src={selectedCountry.basic.flag}
-              alt="flag"
-              className="flag"
-            />
-            <p>
-              <b>Capital:</b> {selectedCountry.basic.capital || "N/A"}
-            </p>
-            <p>
-              <b>Region:</b> {selectedCountry.basic.region}
-            </p>
-            <p>
-              <b>Population:</b>{" "}
-              {selectedCountry.basic.population?.toLocaleString()}
-            </p>
-            <hr />
-            <p>{selectedCountry.culture?.description}</p>
-            <button onClick={handleAddToJourney} className="btn-add">
-              Add to My Journey
-            </button>
-          </div>
-        </motion.div>
-      )}
+        <CountryDashboard
+        countryCode={selectedCountry.code || selectedCountry.basic?.cca3}
+        countryName={selectedCountry.basic?.name || selectedCountry.name}
+        onClose={() => setSelectedCountry(null)}
+        cacheTTL={1000 * 60 * 15}
+        />
+        )}
     </div>
   );
 }
