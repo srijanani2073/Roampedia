@@ -1,7 +1,12 @@
 import React, { useEffect, useState } from "react";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Home from "./pages/home";
 import Navbar from "./components/Navbar";
 import { supabase } from "./supabaseClient";
+import CurrencyConverter from "./components/CurrencyConverter";
+import NewsFeed from "./components/NewsFeed";
+import ItineraryModule from "./components/ItineraryModule";
+import TriviaModule from "./components/TriviaModule";
 
 function App() {
   const [user, setUser] = useState(null);
@@ -23,11 +28,16 @@ function App() {
   }, []);
 
   return (
-    <div>
+    <Router>
       <Navbar user={user} setUser={setUser} />
-      
-      <Home />
-    </div>
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/news" element={<NewsFeed />} />
+        <Route path="/currency" element={<CurrencyConverter />} />
+        <Route path="/itinerary" element={<ItineraryModule />} />
+        <Route path="/trivia" element={<TriviaModule />} />
+      </Routes>
+    </Router>
   );
 }
 
