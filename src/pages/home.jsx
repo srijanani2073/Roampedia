@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Globe, MapPin, Trophy, Newspaper, Cloud, ChefHat, Users, Play, ArrowRight, Star, Zap } from 'lucide-react';
 import AuthModal from "../components/AuthModal";
 import './home.css';
+import { Link } from "react-router-dom";
 
 const WorldExplorerLanding = () => {
   const [selectedCountry, setSelectedCountry] = useState('');
@@ -128,8 +129,13 @@ const WorldExplorerLanding = () => {
               <Play size={20} />
               Start Exploring
             </button>
+            <Link to="/map" className="btn-secondary">
+            <Globe size={20} />
+            Explore the Interactive Map
+            </Link>
           </div>
         </div>
+        
 
         {/* Scroll Indicator */}
         <div className="scroll-indicator">
