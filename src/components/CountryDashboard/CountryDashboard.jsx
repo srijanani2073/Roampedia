@@ -6,11 +6,18 @@ import L from "leaflet";
 import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
 import markerIcon from "leaflet/dist/images/marker-icon.png";
 import markerShadow from "leaflet/dist/images/marker-shadow.png";
+import { FaCheck, FaStar } from "react-icons/fa";
 
 import WeatherCard from "./WeatherCard";
 import NewsFeed from "./NewsFeed";
 import TriviaCard from "./TriviaCard";
 import CurrencyConverter from "./CurrencyConverter";
+import TemperatureChart from "./TemperatureChart";
+import TravelInsights from "./TravelInsights";
+import BestTimeToVisit from "./BestTimeToVisit";
+import TravelListManager from "./TravelListManager";
+
+import { useNavigate } from "react-router-dom";
 
 import "./CountryDashboard.css";
 import "leaflet/dist/leaflet.css";
@@ -23,7 +30,16 @@ import "leaflet/dist/leaflet.css";
  * - countryName (optional)
  * - onClose() required
  * - cacheTTL (ms) optional: default 15 minutes
+ *
+ * Changes in this version:
+ * - Wired up Visited / Wishlist actions to call a backend API (API_BASE).
+ * - Added effect to sync state with server-side lists on mount / country change.
+ * - Kept in-memory cache & UI behavior intact so frontend works even if backend is missing.
  */
+
+// Backend API to be implemented separately (Express + MongoDB).
+const API_BASE = "http://localhost:5050/api"; // <-- change to your deployed server when ready
+const USER_ID = "guest"; // temporary user identifier for now
 
 export default function CountryDashboard({
   countryCode,
@@ -43,30 +59,35 @@ export default function CountryDashboard({
   const [wikiSummary, setWikiSummary] = useState(null);
   const [wikidataFacts, setWikidataFacts] = useState(null);
   const [localTime, setLocalTime] = useState(null);
-  const [favorites, setFavorites] = useState([]);
   const [accentColor, setAccentColor] = useState("#4A90E2");
-  
+  const navigate = useNavigate();
+
+  // per-country in-memory status for session-only persistence
+  const [countryStatus, setCountryStatus] = useState({});
+  const [isVisited, setIsVisited] = useState(false);
+  const [isWishlisted, setIsWishlisted] = useState(false);
+
   // In-memory cache
   const [cache, setCache] = useState({});
   const clockRef = useRef(null);
 
-  // Cache helpers (in-memory only)
+  // Cache helpers
   const keyPrefix = `roampedia_${countryCode || "nocode"}`;
-  
+
   const setCacheValue = (suffix, payload, ttl = cacheTTL) => {
     const key = `${keyPrefix}_${suffix}`;
-    setCache(prev => ({
+    setCache((prev) => ({
       ...prev,
-      [key]: { ts: Date.now(), ttl, payload }
+      [key]: { ts: Date.now(), ttl, payload },
     }));
   };
-  
+
   const getCacheValue = (suffix) => {
     const key = `${keyPrefix}_${suffix}`;
     const cached = cache[key];
     if (!cached) return null;
     if (Date.now() - cached.ts > (cached.ttl || cacheTTL)) {
-      setCache(prev => {
+      setCache((prev) => {
         const newCache = { ...prev };
         delete newCache[key];
         return newCache;
@@ -87,7 +108,9 @@ export default function CountryDashboard({
         // 1) REST Countries
         let rest = getCacheValue("rest");
         if (!rest) {
-          const rr = await axios.get(`https://restcountries.com/v3.1/alpha/${countryCode}`);
+          const rr = await axios.get(
+            `https://restcountries.com/v3.1/alpha/${countryCode}`
+          );
           rest = rr.data?.[0];
           setCacheValue("rest", rest, 1000 * 60 * 60 * 24);
         }
@@ -97,8 +120,11 @@ export default function CountryDashboard({
           name: rest.name?.common || countryName || countryCode,
           cca2: rest.cca2,
           cca3: rest.cca3,
-          capital: Array.isArray(rest.capital) ? rest.capital[0] : rest.capital || "",
-          latlng: rest.capitalInfo?.latlng?.length ? rest.capitalInfo.latlng : rest.latlng || [],
+          capital: Array.isArray(rest.capital)
+            ? rest.capital[0]
+            : rest.capital || "",
+          latlng:
+            rest.capitalInfo?.latlng?.length ? rest.capitalInfo.latlng : rest.latlng || [],
           population: rest.population || 0,
           region: rest.region || "",
           flag: rest.flags?.svg || rest.flags?.png || "",
@@ -107,7 +133,8 @@ export default function CountryDashboard({
           timezones: rest.timezones || [],
         };
         normalized.currencyCode = Object.keys(normalized.currencies || {})[0] || "USD";
-        normalized.currencySymbol = normalized.currencies?.[normalized.currencyCode]?.symbol || "";
+        normalized.currencySymbol =
+          normalized.currencies?.[normalized.currencyCode]?.symbol || "";
 
         if (mounted) setCountry(normalized);
 
@@ -116,25 +143,25 @@ export default function CountryDashboard({
           if (mounted && color) setAccentColor(color);
         });
 
-        // 2) Weather (Open-Meteo, free)
+        // 2) Weather
         let w = getCacheValue("weather");
         if (!w && normalized.latlng?.length) {
           const [lat, lon] = normalized.latlng;
-          const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`;
+          const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&daily=temperature_2m_max,temperature_2m_min&timezone=UTC`;
           const wresp = await axios.get(weatherUrl);
           w = wresp.data;
           setCacheValue("weather", w, 1000 * 60 * 30);
         }
         if (mounted) setWeather(w);
 
-        // 3) Timezone from TimezoneDB API
+        // 3) Timezone
         let tz = getCacheValue("timezone");
         if (!tz && normalized.latlng?.length) {
           try {
             const [lat, lon] = normalized.latlng;
             const tzUrl = `https://api.timezonedb.com/v2.1/get-time-zone?key=P1AEFU4GTZEQ&format=json&by=position&lat=${lat}&lng=${lon}`;
             const tzRes = await axios.get(tzUrl);
-            
+
             if (tzRes.data.status === "OK") {
               const tzData = tzRes.data;
               tz = {
@@ -157,7 +184,7 @@ export default function CountryDashboard({
         } else if (!tz) {
           tz = calculateFallbackTimezone(normalized.timezones?.[0]);
         }
-        
+
         if (mounted) {
           setTimezone(tz);
           startClock(tz);
@@ -256,92 +283,138 @@ export default function CountryDashboard({
       mounted = false;
       stopClock();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [countryCode]);
 
-  // Helper function to format GMT offset in seconds to +HH:MM format
+  // Sync visited/wishlist state from backend for the current user and country
+  useEffect(() => {
+    if (!countryCode) return;
+    let mounted = true;
+
+    async function fetchUserLists() {
+      try {
+        const [vRes, wRes] = await Promise.all([
+          axios.get(`${API_BASE}/visited`, { params: { userId: USER_ID } }),
+          axios.get(`${API_BASE}/wishlist`, { params: { userId: USER_ID } }),
+        ]);
+
+        const visitedList = Array.isArray(vRes.data) ? vRes.data : [];
+        const wishlist = Array.isArray(wRes.data) ? wRes.data : [];
+
+        const visitedCodes = visitedList.map((c) => c.countryCode);
+        const wishlistCodes = wishlist.map((c) => c.countryCode);
+
+        const code = (country && (country.cca3 || country.cca2)) || countryCode;
+        if (mounted) {
+          setIsVisited(visitedCodes.includes(code));
+          setIsWishlisted(wishlistCodes.includes(code));
+          // update session-only map too
+          setCountryStatus((prev) => ({
+            ...prev,
+            [code]: { visited: visitedCodes.includes(code), wishlist: wishlistCodes.includes(code) },
+          }));
+        }
+      } catch (err) {
+        // If backend not reachable, don't break UI — keep in-memory state
+        console.warn("Could not sync lists with backend:", err.message || err);
+      }
+    }
+
+    fetchUserLists();
+
+    return () => {
+      mounted = false;
+    };
+  }, [countryCode, country]);
+
   const formatOffset = (offsetSeconds) => {
     const hours = Math.floor(Math.abs(offsetSeconds) / 3600);
     const minutes = Math.floor((Math.abs(offsetSeconds) % 3600) / 60);
-    const sign = offsetSeconds >= 0 ? '+' : '-';
-    return `${sign}${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+    const sign = offsetSeconds >= 0 ? "+" : "-";
+    return `${sign}${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
   };
 
-  // Fallback timezone calculation when API fails
   const calculateFallbackTimezone = (timezoneStr) => {
-    timezoneStr = timezoneStr || 'UTC';
-    
+    timezoneStr = timezoneStr || "UTC";
+
     const offsetMatch = timezoneStr.match(/UTC([+-]\d{1,2}(?::\d{2})?)/);
     let offsetHours = 0;
     let offsetMinutes = 0;
-    let displayOffset = '+00:00';
-    
+    let displayOffset = "+00:00";
+
     if (offsetMatch) {
       const offsetStr = offsetMatch[1];
-      const parts = offsetStr.split(':');
+      const parts = offsetStr.split(":");
       offsetHours = parseInt(parts[0], 10);
       offsetMinutes = parts[1] ? parseInt(parts[1], 10) : 0;
-      
-      const sign = offsetHours >= 0 ? '+' : '';
+
+      const sign = offsetHours >= 0 ? "+" : "";
       const absHours = Math.abs(offsetHours);
-      displayOffset = `${sign}${String(absHours).padStart(2, '0')}:${String(Math.abs(offsetMinutes)).padStart(2, '0')}`;
+      displayOffset = `${sign}${String(absHours).padStart(2, "0")}:${String(Math.abs(offsetMinutes)).padStart(2, "0")}`;
     } else {
       const tzOffsets = {
-        'Asia/Kolkata': 5.5, 'Asia/Tokyo': 9, 'Asia/Dubai': 4,
-        'Europe/London': 0, 'Europe/Paris': 1, 'Europe/Moscow': 3,
-        'America/New_York': -5, 'America/Los_Angeles': -8, 'America/Chicago': -6,
-        'Australia/Sydney': 10, 'Pacific/Auckland': 12,
+        "Asia/Kolkata": 5.5,
+        "Asia/Tokyo": 9,
+        "Asia/Dubai": 4,
+        "Europe/London": 0,
+        "Europe/Paris": 1,
+        "Europe/Moscow": 3,
+        "America/New_York": -5,
+        "America/Los_Angeles": -8,
+        "America/Chicago": -6,
+        "Australia/Sydney": 10,
+        "Pacific/Auckland": 12,
       };
-      
-      const matchedZone = Object.keys(tzOffsets).find(zone => timezoneStr.includes(zone));
+
+      const matchedZone = Object.keys(tzOffsets).find((zone) => timezoneStr.includes(zone));
       if (matchedZone) {
         offsetHours = Math.floor(tzOffsets[matchedZone]);
         offsetMinutes = (tzOffsets[matchedZone] % 1) * 60;
-        const sign = offsetHours >= 0 ? '+' : '';
+        const sign = offsetHours >= 0 ? "+" : "";
         const absHours = Math.abs(offsetHours);
-        displayOffset = `${sign}${String(absHours).padStart(2, '0')}:${String(Math.abs(offsetMinutes)).padStart(2, '0')}`;
+        displayOffset = `${sign}${String(absHours).padStart(2, "0")}:${String(Math.abs(offsetMinutes)).padStart(2, "0")}`;
       }
     }
-    
+
     const now = new Date();
-    const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
-    const totalOffsetMs = (offsetHours * 3600000) + (offsetMinutes * 60000 * Math.sign(offsetHours));
+    const utc = now.getTime() + now.getTimezoneOffset() * 60000;
+    const totalOffsetMs = offsetHours * 3600000 + offsetMinutes * 60000 * Math.sign(offsetHours);
     const localDate = new Date(utc + totalOffsetMs);
-    
+
     return {
       timezone: timezoneStr,
       utc_offset: displayOffset,
       datetime: localDate.toISOString(),
-      gmtOffset: (offsetHours * 3600) + (offsetMinutes * 60 * Math.sign(offsetHours)),
+      gmtOffset: offsetHours * 3600 + offsetMinutes * 60 * Math.sign(offsetHours),
       timestamp: Math.floor(localDate.getTime() / 1000),
     };
   };
 
-  // Clock helpers
   function startClock(tz) {
     stopClock();
     if (!tz?.datetime) {
       setLocalTime(null);
       return;
     }
-    
+
     const baseTime = new Date(tz.datetime);
     const startTimestamp = Date.now();
-    
+
     function tick() {
       try {
         const elapsedSeconds = Math.floor((Date.now() - startTimestamp) / 1000);
-        const currentTime = new Date(baseTime.getTime() + (elapsedSeconds * 1000));
-        
-        const hours = String(currentTime.getUTCHours()).padStart(2, '0');
-        const minutes = String(currentTime.getUTCMinutes()).padStart(2, '0');
-        const seconds = String(currentTime.getUTCSeconds()).padStart(2, '0');
-        
+        const currentTime = new Date(baseTime.getTime() + elapsedSeconds * 1000);
+
+        const hours = String(currentTime.getUTCHours()).padStart(2, "0");
+        const minutes = String(currentTime.getUTCMinutes()).padStart(2, "0");
+        const seconds = String(currentTime.getUTCSeconds()).padStart(2, "0");
+
         setLocalTime(`${hours}:${minutes}:${seconds}`);
       } catch (e) {
         console.warn("tick err", e);
       }
     }
-    
+
     tick();
     clockRef.current = setInterval(tick, 1000);
   }
@@ -353,7 +426,6 @@ export default function CountryDashboard({
     }
   }
 
-  // Color extraction from flag image
   const extractAccentFromFlag = async (flagUrl) => {
     if (!flagUrl) return null;
     try {
@@ -373,14 +445,22 @@ export default function CountryDashboard({
       const ctx = canvas.getContext("2d");
       ctx.drawImage(img, 0, 0, w, h);
       const data = ctx.getImageData(w / 4, h / 4, Math.floor(w / 2), Math.floor(h / 2)).data;
-      let r = 0, g = 0, b = 0, count = 0;
+      let r = 0,
+        g = 0,
+        b = 0,
+        count = 0;
       for (let i = 0; i < data.length; i += 4) {
         const alpha = data[i + 3];
         if (alpha === 0) continue;
-        r += data[i]; g += data[i + 1]; b += data[i + 2]; count++;
+        r += data[i];
+        g += data[i + 1];
+        b += data[i + 2];
+        count++;
       }
       if (!count) return null;
-      r = Math.round(r / count); g = Math.round(g / count); b = Math.round(b / count);
+      r = Math.round(r / count);
+      g = Math.round(g / count);
+      b = Math.round(b / count);
       return `rgb(${r}, ${g}, ${b})`;
     } catch (e) {
       console.warn("accent extract failed", e);
@@ -396,14 +476,95 @@ export default function CountryDashboard({
     shadowUrl: markerShadow,
   });
 
-  const handleFavorite = () => {
-    const found = favorites.find((p) => p.cca3 === country?.cca3);
-    if (found) {
-      setFavorites(favorites.filter((p) => p.cca3 !== country.cca3));
-      alert("Removed from favorites");
-    } else {
-      setFavorites([...favorites, { cca3: country?.cca3, name: country?.name, flag: country?.flag }]);
-      alert("Added to favorites");
+  const statusKey = country?.cca3 || country?.cca2 || country?.name || countryCode || "nocode";
+
+  useEffect(() => {
+    if (!country) {
+      setIsVisited(false);
+      setIsWishlisted(false);
+      return;
+    }
+    const s = countryStatus[statusKey];
+    setIsVisited(Boolean(s?.visited));
+    setIsWishlisted(Boolean(s?.wishlist));
+  }, [country, countryStatus, statusKey]);
+
+  // Toggle functions now call backend endpoints (POST/DELETE) and update UI optimistically.
+  const toggleVisited = async () => {
+    try {
+      if (!country) return;
+      const code = country.cca3 || country.cca2 || countryCode;
+      const payload = {
+        userId: USER_ID,
+        countryCode: code,
+        countryName: country.name,
+        region: country.region,
+        flagUrl: country.flag,
+      };
+
+      // optimistic UI update
+      setIsVisited((prev) => !prev);
+      setCountryStatus((prev) => {
+        const cur = prev[statusKey] || { visited: false, wishlist: false };
+        const next = { ...cur, visited: !cur.visited };
+        return { ...prev, [statusKey]: next };
+      });
+
+      if (isVisited) {
+        // currently visited -> remove
+        await axios.delete(`${API_BASE}/visited/${encodeURIComponent(code)}`, { params: { userId: USER_ID } });
+      } else {
+        // currently not visited -> add
+        await axios.post(`${API_BASE}/visited`, payload);
+      }
+    } catch (err) {
+      // revert optimistic update on failure
+      console.error("Failed to toggle visited:", err);
+      setIsVisited((v) => !v);
+      setCountryStatus((prev) => {
+        const cur = prev[statusKey] || { visited: false, wishlist: false };
+        const next = { ...cur, visited: !cur.visited };
+        return { ...prev, [statusKey]: next };
+      });
+    }
+  };
+
+  const toggleWishlist = async () => {
+    try {
+      if (!country) return;
+      const code = country.cca3 || country.cca2 || countryCode;
+      const payload = {
+        userId: USER_ID,
+        countryCode: code,
+        countryName: country.name,
+        region: country.region,
+        flagUrl: country.flag,
+      };
+
+      // optimistic UI update
+      setIsWishlisted((prev) => !prev);
+      setCountryStatus((prev) => {
+        const cur = prev[statusKey] || { visited: false, wishlist: false };
+        const next = { ...cur, wishlist: !cur.wishlist };
+        return { ...prev, [statusKey]: next };
+      });
+
+      if (isWishlisted) {
+        // remove from wishlist
+        await axios.delete(`${API_BASE}/wishlist/${encodeURIComponent(code)}`, { params: { userId: USER_ID } });
+      } else {
+        // add to wishlist
+        await axios.post(`${API_BASE}/wishlist`, payload);
+      }
+    } catch (err) {
+      // revert optimistic update on failure
+      console.error("Failed to toggle wishlist:", err);
+      setIsWishlisted((v) => !v);
+      setCountryStatus((prev) => {
+        const cur = prev[statusKey] || { visited: false, wishlist: false };
+        const next = { ...cur, wishlist: !cur.wishlist };
+        return { ...prev, [statusKey]: next };
+      });
     }
   };
 
@@ -424,11 +585,11 @@ export default function CountryDashboard({
               </div>
               <div className="title-block">
                 <h3 style={{ color: accentColor }}>{country?.name || countryName || countryCode}</h3>
-                <div className="sub muted">
+                <div className="sub">
                   {country?.capital ? `${country.capital} • ${country.region}` : country?.region}
                 </div>
                 {timezone && (
-                  <div className="timezone muted">
+                  <div className="timezone">
                     🕒 {timezone.timezone} (UTC{timezone.utc_offset}) — Local Time: {localTime || "—"}
                   </div>
                 )}
@@ -436,10 +597,29 @@ export default function CountryDashboard({
             </div>
 
             <div className="cd-actions">
-              <button className="btn ghost" onClick={handleFavorite}>
-                ★ Favorite
+              <button
+                className={`icon-btn ${isVisited ? "active-visited" : ""}`}
+                onClick={toggleVisited}
+                title={isVisited ? "Remove from Visited" : "Mark as Visited"}
+                aria-pressed={isVisited}
+                aria-label={isVisited ? "Visited — selected" : "Mark as visited"}
+              >
+                <FaCheck />
               </button>
-              <button className="btn" onClick={onClose}>Close</button>
+
+              <button
+                className={`icon-btn ${isWishlisted ? "active-wishlist" : ""}`}
+                onClick={toggleWishlist}
+                title={isWishlisted ? "Remove from Wishlist" : "Add to Wishlist"}
+                aria-pressed={isWishlisted}
+                aria-label={isWishlisted ? "Wishlisted — selected" : "Add to wishlist"}
+              >
+                <FaStar />
+              </button>
+
+              <button className="btn" onClick={onClose} title="Close">
+                ✕
+              </button>
             </div>
           </div>
 
@@ -479,13 +659,16 @@ export default function CountryDashboard({
                   </div>
 
                   <WeatherCard weather={weather} capital={country?.capital} />
+                  <TemperatureChart weather={weather} latlng={country?.latlng} />
                   <TriviaCard wikidata={wikidataFacts} wikipedia={wikiSummary} country={country} />
+                  <TravelInsights />
                 </div>
 
                 <div className="right-col">
+                  <TravelListManager country={country} userId="guest" />
                   <div className="card map-card">
                     <div className="card-header">Map</div>
-                    <div className="card-body" style={{ padding: 8 }}>
+                    <div className="card-body map-body">
                       {country?.latlng?.length ? (
                         <div style={{ height: 220 }}>
                           <MapContainer
@@ -522,11 +705,27 @@ export default function CountryDashboard({
                   </div>
 
                   <NewsFeed articles={news} />
+
                   <CurrencyConverter
                     exchangeRates={exchangeRates}
                     defaultTo={country?.currencyCode}
                     defaultToSymbol={country?.currencySymbol}
                   />
+
+                  <BestTimeToVisit
+                    lat={country?.latlng?.[0]}
+                    lon={country?.latlng?.[1]}
+                    countryName={country?.name}
+                  />
+
+                  <div className="quiz-btn-wrap">
+                    <button
+                      onClick={() => navigate("/trivia")}
+                      className="btn quiz-btn"
+                    >
+                      🎯 Take Country Quiz →
+                    </button>
+                  </div>
                 </div>
               </div>
             )}

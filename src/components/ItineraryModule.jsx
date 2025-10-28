@@ -18,10 +18,10 @@
 // //   Usage:
 // //     <ItineraryModule user={user} />
 // //   where `user` is the logged-in user object containing an `email` field (or id).
-// //   API base URL: set REACT_APP_API_BASE in your .env or it will default to http://localhost:5000
+// //   API base URL: set REACT_APP_API_BASE in your .env or it will default to http://localhost:5050
 // // */
 
-// // const API_BASE = process.env.REACT_APP_API_BASE || "http://localhost:5000/api";
+// // const API_BASE = process.env.REACT_APP_API_BASE || "http://localhost:5050/api";
 
 // // const defaultExample = [
 // //   {

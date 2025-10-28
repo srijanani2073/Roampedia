@@ -1,3 +1,4 @@
+// src/components/RoampediaMap.jsx
 import React, { useEffect, useRef, useState } from "react";
 import mapboxgl from "mapbox-gl";
 import axios from "axios";
@@ -15,12 +16,18 @@ export default function RoampediaMap({ userId = "user_123" }) {
   const [selectedCountry, setSelectedCountry] = useState(null);
   const [journeyMode, setJourneyMode] = useState(true);
 
-  // 🗺️ Fetch visited countries for user
+  // 🗺️ Fetch visited countries for user (dummy API)
   useEffect(() => {
     async function fetchVisited() {
       try {
-        const res = await axios.get(`/api/user_journey/${userId}`);
-        setVisited(res.data.places_visited?.map((p) => p.cca3) || []);
+        // attempt to call server; fallback to localStorage
+        const res = await axios.get(`/api/user_journey/${userId}`).catch(() => null);
+        if (res?.data?.places_visited) {
+          setVisited(res.data.places_visited.map((p) => p.cca3));
+        } else {
+          const local = JSON.parse(localStorage.getItem(`rp_visited_${userId}`) || "[]");
+          setVisited(local.map((p) => p.cca3));
+        }
       } catch (e) {
         console.warn("Fetch visited failed:", e);
       }
@@ -106,19 +113,18 @@ export default function RoampediaMap({ userId = "user_123" }) {
           const f = e.features[0];
           const code = f.properties.iso_3166_1_alpha_3;
           try {
-            const resp = await axios.get(`/api/country/${code}`);
+            const resp = await axios.get(`/api/country/${code}`).catch(() => null);
             setSelectedCountry({
-                code,
-                name: f.properties.name_en,
-                region: f.properties.region || "",
-                basic: {
+              code,
+              name: f.properties.name_en,
+              region: f.properties.region || "",
+              basic: {
                 cca3: code,
                 name: f.properties.name_en,
-                },
+              },
             });
           } catch (err) {
             console.warn("Country fetch failed:", err);
-            // fallback if API fails
             setSelectedCountry({
               basic: {
                 cca3: code,
@@ -148,13 +154,18 @@ export default function RoampediaMap({ userId = "user_123" }) {
     if (!selectedCountry) return;
     const basic = selectedCountry.basic;
     try {
+      // If server available, post; else save locally
       await axios.post("/api/user_journey", {
         userId,
         place: {
           cca3: basic.cca3,
           name: basic.name,
         },
-      });
+      }).catch(() => null);
+
+      const existing = JSON.parse(localStorage.getItem(`rp_visited_${userId}`) || "[]");
+      existing.push({ cca3: basic.cca3, name: basic.name });
+      localStorage.setItem(`rp_visited_${userId}`, JSON.stringify(existing));
       setVisited((prev) => [...prev, basic.cca3]);
       setSelectedCountry(null);
       alert(`${basic.name} added to your Journey!`);
@@ -199,12 +210,12 @@ export default function RoampediaMap({ userId = "user_123" }) {
       {/* ✅ New Country Dashboard Panel */}
       {selectedCountry && (
         <CountryDashboard
-        countryCode={selectedCountry.code || selectedCountry.basic?.cca3}
-        countryName={selectedCountry.basic?.name || selectedCountry.name}
-        onClose={() => setSelectedCountry(null)}
-        cacheTTL={1000 * 60 * 15}
+          countryCode={selectedCountry.code || selectedCountry.basic?.cca3}
+          countryName={selectedCountry.basic?.name || selectedCountry.name}
+          onClose={() => setSelectedCountry(null)}
+          cacheTTL={1000 * 60 * 15}
         />
-        )}
+      )}
     </div>
   );
 }
