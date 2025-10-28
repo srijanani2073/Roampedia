@@ -99,9 +99,17 @@ const Navbar = ({ user, setUser }) => {
               <Wallet size={16} />
               Itinerary Module
             </Link>
+            <Link to="/itineraryplanner" className="nav-link-btn">
+              <Wallet size={16} />
+              Itinerary Planner
+            </Link>
             <Link to="/trivia" className="nav-link-btn">
               <Wallet size={16} />
               Trivia Module
+            </Link>
+            <Link to="/chatbot" className="nav-link-btn">
+              <Wallet size={16} />
+              ChatBot
             </Link>
           </div>
 

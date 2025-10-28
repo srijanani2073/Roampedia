@@ -7,9 +7,10 @@ import CurrencyConverter from "./components/CurrencyConverter";
 import NewsFeed from "./components/NewsFeed";
 import ItineraryModule from "./components/ItineraryModule";
 import TriviaModule from "./components/TriviaModule";
+import ItineraryPlanner from "./components/ItineraryPlanner";
 import RoampediaMap from './components/RoampediaMap';
 import "mapbox-gl/dist/mapbox-gl.css";
-
+import Chatbot from "./components/ChatBot";
 
 function App() {
   const [user, setUser] = useState(null);
@@ -39,7 +40,9 @@ function App() {
         <Route path="/currency" element={<CurrencyConverter />} />
         <Route path="/itinerary" element={<ItineraryModule />} />
         <Route path="/trivia" element={<TriviaModule />} />
+        <Route path="/itineraryplanner" element={<ItineraryPlanner />} />
         <Route path="/map" element={<RoampediaMap />} />
+        <Route path="/chatbot" element={<Chatbot />} />
       </Routes>
     </Router>
   );

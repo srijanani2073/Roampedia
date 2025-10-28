@@ -1,3 +1,143 @@
+/* TravelDashboard.css
+   Tropical palette inspired by the image.
+   Place in src/components/TravelDashboard.css
+*/
+
+:root{
+  --bg:#f4fbff;
+  --card:#ffffff;
+  --muted:#6b7280;
+  --accent:#2c7a7b;
+  --accent-2:#06b6d4;
+  --accent-3:#48bb78;
+  --shadow: 0 10px 30px rgba(2,6,23,0.06);
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+}
+
+.travel-dashboard{
+  max-width: 1200px;
+  margin: 18px auto;
+  padding: 18px;
+  background: linear-gradient(180deg, rgba(14,165,233,0.03), rgba(14,165,233,0.01));
+  border-radius: 12px;
+}
+
+/* Top hero */
+.dashboard-top .hero{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:12px;
+  padding: 12px;
+  margin-bottom: 10px;
+}
+
+.hero-left h1{
+  margin:0;
+  font-size:28px;
+  color:#073b4c;
+}
+.hero-left .destination{ margin:6px 0 0; color:var(--muted); }
+.hero-left .destination input{ border: none; border-bottom:1px dashed #e6eef3; padding:4px 6px; }
+
+.hero-right{
+  display:flex;
+  align-items:center;
+  gap:12px;
+}
+.hero-right .today, .hero-right .countdown{
+  background:var(--card);
+  padding:10px 12px;
+  border-radius:8px;
+  box-shadow:var(--shadow);
+  text-align:center;
+}
+.hero-right .today .bold, .hero-right .countdown .bold{ font-weight:700; }
+
+.hero-right .actions button{
+  margin-left:6px;
+  padding:8px 10px;
+  border-radius:8px;
+  border:none;
+  background:var(--accent);
+  color:white;
+  cursor:pointer;
+}
+
+/* Grid layout */
+.dashboard-grid{
+  display:grid;
+  grid-template-columns: 320px 1fr 360px;
+  gap:14px;
+}
+
+/* card */
+.card{
+  background:var(--card);
+  padding:12px;
+  border-radius:10px;
+  box-shadow:var(--shadow);
+}
+
+/* left col */
+.left-col .card + .card{ margin-top:12px; }
+
+.trip-details .row, .travellers .row{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:8px;
+  margin-bottom:8px;
+}
+.trip-details input, .travellers input{
+  padding:6px 8px;
+  border-radius:6px;
+  border:1px solid #e6eef3;
+  width: 160px;
+}
+
+.travellers .small{ display:flex; justify-content:space-between; gap:8px; margin-bottom:8px; align-items:center; }
+.currency .cc-row{ display:flex; gap:6px; align-items:center; margin-top:8px; }
+.currency input{ padding:6px 8px; border-radius:6px; border:1px solid #e6eef3; width:64px; text-align:center; }
+
+.tasks .task-grid{ display:grid; grid-template-columns: 1fr 1fr; gap:6px; }
+.task-row{ background:#f8fafb; padding:8px; border-radius:6px; display:flex; justify-content:space-between; }
+
+/* mid column */
+.mid-col .pie-area{ display:flex; gap:12px; align-items:center; }
+.legend{ width:240px; max-height:260px; overflow:auto; }
+.legend-row{ display:flex; gap:10px; align-items:center; margin-bottom:8px; }
+.swatch{ width:14px; height:14px; border-radius:4px; display:inline-block; }
+.legend .cat{ font-weight:600; }
+.legend .meta{ font-size:12px; color:var(--muted); }
+
+/* budget bars area */
+.bars-area{ display:flex; gap:12px; align-items:center; justify-content:space-between; }
+.totals{ width:180px; display:flex; flex-direction:column; gap:8px; }
+.totals .big{ font-size:20px; font-weight:700; margin-top:4px; }
+
+/* right column */
+.expense-table table{ width:100%; border-collapse:collapse; }
+.expense-table th, .expense-table td{ padding:8px 6px; border-bottom:1px solid #f1f5f9; text-align:left; }
+.expense-table input{ padding:6px 8px; border-radius:6px; border:1px solid #e6eef3; width:100%; }
+
+.small.del{ background:#ef4444; color:#fff; border:none; padding:6px 8px; border-radius:6px; cursor:pointer; }
+
+.table-actions{ margin-top:8px; display:flex; justify-content:flex-end; }
+.notes textarea{ width:100%; min-height:100px; padding:8px; border-radius:8px; border:1px solid #e6eef3; }
+
+/* preview / labels */
+.muted{ color:var(--muted); font-size:13px; }
+.pos{ color:#059669; font-weight:700; }
+.neg{ color:#ef4444; font-weight:700; }
+
+/* responsive */
+@media (max-width: 1100px){
+  .dashboard-grid{ grid-template-columns: 1fr; }
+  .legend{ display:none; }
+}
+
+/* old */
 .itinerary-module {
   display: grid;
   grid-template-columns: 1fr 420px;
@@ -75,3 +215,5 @@ button.small.del { background:#ef4444; color:#fff; }
   .itinerary-module { grid-template-columns: 1fr; }
   .right-panel { order: -1; }
 }
+
+
