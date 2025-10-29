@@ -6,7 +6,7 @@ import L from "leaflet";
 import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
 import markerIcon from "leaflet/dist/images/marker-icon.png";
 import markerShadow from "leaflet/dist/images/marker-shadow.png";
-import { FaCheck, FaStar } from "react-icons/fa";
+import { FaCheck, FaStar, FaPlus } from "react-icons/fa";
 
 import WeatherCard from "./WeatherCard";
 import NewsFeed from "./NewsFeed";
@@ -16,6 +16,8 @@ import TemperatureChart from "./TemperatureChart";
 import TravelInsights from "./TravelInsights";
 import BestTimeToVisit from "./BestTimeToVisit";
 import TravelListManager from "./TravelListManager";
+import ExperienceModal from "./ExperienceModal";
+import AddExperienceForm from "./AddExperienceForm";
 
 import { useNavigate } from "react-router-dom";
 
@@ -61,6 +63,7 @@ export default function CountryDashboard({
   const [localTime, setLocalTime] = useState(null);
   const [accentColor, setAccentColor] = useState("#4A90E2");
   const navigate = useNavigate();
+  const [showExperienceForm, setShowExperienceForm] = useState(false);
 
   // per-country in-memory status for session-only persistence
   const [countryStatus, setCountryStatus] = useState({});
@@ -617,9 +620,39 @@ export default function CountryDashboard({
                 <FaStar />
               </button>
 
+              <button
+                className={`icon-btn ${isVisited ? "active-plus" : "disabled-plus"}`}
+                onClick={() => setShowExperienceForm(true)}
+                title={isVisited ? "Add your travel experience" : "Mark visited first"}
+                disabled={!isVisited}
+              >
+                <FaPlus />
+              </button>
+
               <button className="btn" onClick={onClose} title="Close">
                 ✕
               </button>
+              {showExperienceForm && (
+  <div className="experience-modal-overlay">
+    <div className="experience-modal">
+      <button
+        className="close-modal-btn"
+        onClick={() => setShowExperienceForm(false)}
+      >
+        ✕
+      </button>
+      <ExperienceModal
+        isOpen={showExperienceForm}
+        onClose={() => setShowExperienceForm(false)}
+      >
+        <AddExperienceForm
+          selectedCountry={country?.name || countryName || countryCode}
+          onClose={() => setShowExperienceForm(false)}
+        />
+      </ExperienceModal>
+    </div>
+  </div>
+)}
             </div>
           </div>
 

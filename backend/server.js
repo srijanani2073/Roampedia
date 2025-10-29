@@ -5,6 +5,7 @@ import morgan from "morgan";
 import dotenv from "dotenv";
 import listsRouter from "./routes/lists.js"; // ✅ use .js extension for ESM imports
 import travelNotesRoutes from "./routes/travelNotesRoutes.js";
+import experienceRoutes from "./routes/experienceRoutes.js";
 
 dotenv.config();
 
@@ -45,6 +46,7 @@ mongoose
 // === Routes ===
 app.use("/api", listsRouter);
 app.use("/api/travelnotes", travelNotesRoutes);
+app.use("/api/experiences", experienceRoutes);
 
 // === Health Check ===
 app.get("/", (req, res) =>

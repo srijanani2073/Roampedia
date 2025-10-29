@@ -5,6 +5,8 @@ import axios from "axios";
 import { motion } from "framer-motion";
 import CountryDashboard from "./CountryDashboard/CountryDashboard";
 import "./RoampediaMap.css";
+import ExperienceModal from "./CountryDashboard/ExperienceModal";
+import AddExperienceForm from "./CountryDashboard/AddExperienceForm";
 
 mapboxgl.accessToken = "pk.eyJ1Ijoic3JpamFuYW5pMjA3MyIsImEiOiJjbWg4emNwcWQxNHdsMmlzNWU1OHgxa2xkIn0.2M6rf1vKlgeWShhOhqI-OQ";
 
