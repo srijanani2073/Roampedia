@@ -111,6 +111,10 @@ const Navbar = ({ user, setUser }) => {
               <Wallet size={16} />
               ChatBot
             </Link>
+            <Link to="/Itinerarydashboard" className="nav-link-btn">
+              <Wallet size={16} />
+              Itinerary Dashboard
+            </Link>
           </div>
 
           {/* Right: Sign In / Profile */}
