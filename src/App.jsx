@@ -8,6 +8,7 @@ import NewsFeed from "./components/NewsFeed";
 import ItineraryModule from "./components/ItineraryModule";
 import TriviaModule from "./components/TriviaModule";
 import ItineraryPlanner from "./components/ItineraryPlanner";
+import ItineraryDashboard from "./components/ItineraryDashboard/ItineraryDashboard";
 import RoampediaMap from './components/RoampediaMap';
 import "mapbox-gl/dist/mapbox-gl.css";
 import Chatbot from "./components/ChatBot";
@@ -41,6 +42,7 @@ function App() {
         <Route path="/itinerary" element={<ItineraryModule />} />
         <Route path="/trivia" element={<TriviaModule />} />
         <Route path="/itineraryplanner" element={<ItineraryPlanner />} />
+        <Route path="/itinerarydashboard" element={<ItineraryDashboard />} />
         <Route path="/map" element={<RoampediaMap />} />
         <Route path="/chatbot" element={<Chatbot />} />
       </Routes>
